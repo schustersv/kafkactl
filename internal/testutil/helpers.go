@@ -18,6 +18,44 @@ import (
 	"github.com/riferrei/srclient"
 )
 
+func CreateUser(t *testing.T, username, password string, saslMechanism string, iterations int) string {
+	kafkaCtl := CreateKafkaCtlCommand()
+
+	if _, err := kafkaCtl.Execute("create", "user", username, "--password", password, "--mechanism", saslMechanism, "--iterations", strconv.Itoa(iterations)); err != nil {
+		t.Fatalf("failed to execute command: %v", err)
+	}
+
+	AssertEquals(t, fmt.Sprintf("user created: %s", username), kafkaCtl.GetStdOut())
+	VerifyUserExists(t, username)
+
+	return username
+}
+
+func VerifyUserExists(t *testing.T, username string) {
+	kafkaCtl := CreateKafkaCtlCommand()
+
+	findUser := func(_ uint) error {
+		_, err := kafkaCtl.Execute("get", "users", "-o", "compact")
+		if err != nil {
+			return err
+		}
+		users := strings.SplitN(kafkaCtl.GetStdOut(), "\n", -1)
+		if util.ContainsString(users, username) {
+			return nil
+		}
+		return errors.New("user not in list")
+	}
+
+	err := retry.Retry(
+		findUser,
+		strategy.Limit(5),
+		strategy.Backoff(backoff.Linear(10*time.Millisecond)),
+	)
+	if err != nil {
+		t.Fatalf("could not find user %s: %v", username, err)
+	}
+}
+
 func CreateTopic(t *testing.T, topicPrefix string, flags ...string) string {
 	kafkaCtl := CreateKafkaCtlCommand()
 	topicName := GetPrefixedName(topicPrefix)

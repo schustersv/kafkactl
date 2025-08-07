@@ -12,5 +12,6 @@ func NewCreateCmd() *cobra.Command {
 	cmdCreate.AddCommand(newCreateTopicCmd())
 	cmdCreate.AddCommand(newCreateConsumerGroupCmd())
 	cmdCreate.AddCommand(newCreateACLCmd())
+	cmdCreate.AddCommand(newCreateUserCmd())
 	return cmdCreate
 }
